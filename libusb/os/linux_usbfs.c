@@ -216,6 +216,12 @@ static libusb_android_open_callback_func _android_open_callback = NULL;
 void libusb_set_android_open_callback(libusb_android_open_callback_func aocf) {
 	_android_open_callback = aocf;
 }
+
+static libusb_android_scan_devices_func _android_scan_devices_callback = NULL;
+
+void libusb_set_android_scan_devices_callback(libusb_android_scan_devices_func asdf) {
+	_android_scan_devices_callback = asdf;
+}
 #endif
 
 static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
@@ -583,6 +589,13 @@ static int linux_scan_devices(struct libusb_context *ctx)
 	ret = linux_udev_scan_devices(ctx);
 #elif !defined(__ANDROID__)
 	ret = linux_default_scan_devices(ctx);
+#elif __ANDROID__
+	if (_android_scan_devices_callback) {
+		ret = _android_scan_devices_callback(ctx)
+	} else {
+		usbi_err(ctx, "_android_open_callback not set");
+		return LIBUSB_ERROR_OTHER;
+	}
 #endif
 
 	usbi_mutex_static_unlock(&linux_hotplug_lock);
