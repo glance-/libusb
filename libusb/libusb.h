@@ -2059,6 +2059,14 @@ enum libusb_option {
 
 int LIBUSB_CALL libusb_set_option(libusb_context *ctx, enum libusb_option option, ...);
 
+#ifdef __ANDROID__
+typedef int (*libusb_android_open_callback_func)(uint16_t idVendor, uint16_t idProduct);
+/* Make the darn thing ifdef'able */
+#define libusb_android_open_callback_func libusb_android_open_callback_func
+
+void libusb_set_android_open_callback(libusb_android_open_callback_func aocf);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -210,6 +210,14 @@ static int _open(const char *path, int flags)
 		return open(path, flags);
 }
 
+#ifdef __ANDROID__
+static libusb_android_open_callback_func _android_open_callback = NULL;
+
+void libusb_set_android_open_callback(libusb_android_open_callback_func aocf) {
+	_android_open_callback = aocf;
+}
+#endif
+
 static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 {
 	struct libusb_context *ctx = DEVICE_CTX(dev);
@@ -217,14 +225,25 @@ static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 	int fd;
 	int delay = 10000;
 
+#ifndef __ANDROID__
 	if (usbdev_names)
 		snprintf(path, PATH_MAX, "%s/usbdev%d.%d",
 			usbfs_path, dev->bus_number, dev->device_address);
 	else
 		snprintf(path, PATH_MAX, "%s/%03d/%03d",
 			usbfs_path, dev->bus_number, dev->device_address);
+#endif
 
+#ifdef __ANDROID__
+	if (_android_open_callback) {
+		fd = _android_open_callback(dev->device_descriptor.idVendor, dev->device_descriptor.idProduct);
+	} else {
+		usbi_err(ctx, "_android_open_callback not set");
+		return LIBUSB_ERROR_OTHER;
+	}
+#else
 	fd = _open(path, mode);
+#endif
 	if (fd != -1)
 		return fd; /* Success */
 
@@ -430,11 +449,13 @@ static int op_init(struct libusb_context *ctx)
 	struct stat statbuf;
 	int r;
 
+#ifndef __ANDROID__
 	usbfs_path = find_usbfs_path();
 	if (!usbfs_path) {
 		usbi_err(ctx, "could not find usbfs");
 		return LIBUSB_ERROR_OTHER;
 	}
+#endif
 
 	if (monotonic_clkid == -1)
 		monotonic_clkid = find_monotonic_clock();
